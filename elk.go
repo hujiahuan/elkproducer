@@ -12,6 +12,7 @@ import (
 	"time"
 )
 
+// elk
 func NewClient(cfg ESConfig) (Client, error) {
 	es, err := elasticsearch.NewClient(GetElasticConfig(cfg.ESConf))
 	if err != nil {
