@@ -21,4 +21,6 @@ type Client interface {
 	GetTeeLog() map[string]interface{}
 	//query
 	GetData(map[string]interface{}) map[string]interface{}
+
+	Ping() bool
 }

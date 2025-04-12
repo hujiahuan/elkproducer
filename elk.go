@@ -6,6 +6,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"log"
@@ -18,6 +19,7 @@ func NewClient(cfg ESConfig) (Client, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if cfg.DebugMode {
 		info, err := es.Info()
 		if err != nil {
@@ -35,10 +37,27 @@ func NewClient(cfg ESConfig) (Client, error) {
 		}
 	}
 
-	return &ElasticSearchClient{
-		es:       es,
-		ESConfig: cfg,
-	}, nil
+	res, err := es.Ping()
+	if err != nil {
+		log.Println("连接失败: ", err) // 捕获网络级错误（如超时、DNS 解析失败）
+		return &ElasticSearchClient{
+			es:       es,
+			ESConfig: cfg,
+		}, err
+	} else {
+		if res.IsError() {
+			log.Println("ES 返回错误: ", res.String()) // 捕获服务级错误（如认证失败）
+			return &ElasticSearchClient{
+				es:       es,
+				ESConfig: cfg,
+			}, errors.New(res.String())
+		} else {
+			return &ElasticSearchClient{
+				es:       es,
+				ESConfig: cfg,
+			}, nil
+		}
+	}
 }
 
 func GetElasticConfig(c Config) elasticsearch.Config {
@@ -345,4 +364,19 @@ func (c *ElasticSearchClient) GetTeeLog() map[string]interface{} {
 	//	log.Printf(" * ID=%s, %s", hit.(map[string]interface{})["_id"], hit.(map[string]interface{})["_source"])
 	//}
 	//log.Println(strings.Repeat("=", 37))
+}
+
+func (c *ElasticSearchClient) Ping() bool {
+	res, err := c.es.Ping()
+	if err != nil {
+		log.Println("连接失败: ", err) // 捕获网络级错误（如超时、DNS 解析失败）
+		return false
+	} else {
+		if res.IsError() {
+			log.Println("ES 返回错误: ", res.String()) // 捕获服务级错误（如认证失败）
+			return false
+		} else {
+			return true
+		}
+	}
 }

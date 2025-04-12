@@ -2,6 +2,8 @@ package elkproducer
 
 import (
 	"fmt"
+	"net"
+	"net/http"
 	"testing"
 	"time"
 )
@@ -13,23 +15,41 @@ type TestStruct struct {
 }
 
 func TestAddLog(t *testing.T) {
+	httpClient := &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout: 5 * time.Second,
+			}).DialContext,
+			TLSHandshakeTimeout:   5 * time.Second,
+			ResponseHeaderTimeout: 5 * time.Second,
+		},
+	}
 	elkConf := Config{
 		Addresses: []string{
 			"http://150.138.84.21:9200",
+			//"http://10.0.27.45:9200",
 		},
-		Username: "elastic",
-		Password: "sursen@admin",
+		Username:      "elastic",
+		Password:      "sursen@admin",
+		DisableRetry:  true,
+		RetryOnStatus: []int{},
+		MaxRetries:    0,
+		Transport:     httpClient.Transport,
 	}
 	configelk := ESConfig{
 		ESConf: elkConf,
 		Index:  "test2",
 		//IndexType: "log",
 		//Url:       "http://101.237.34.55:6010",
-		DebugMode: true,
+		DebugMode: false,
 		//From:      0,
 		//Size:      10000,
 	}
-	es, _ := NewClient(configelk)
+	es, err := NewClient(configelk)
+	if err != nil {
+		fmt.Println("NewClient", err)
+	}
 	type LogData struct {
 		E      string   `json:"E"`
 		B      string   `json:"B"`
